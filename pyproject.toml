@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pystiller"
+version = "1.0.0"
+description = "A wrap around the DistillerSR APIs"
+readme = "README.md"
+authors = [
+    { name = "Lorenzo Copelli" },
+    { name = "Fulvio Barizzone" },
+    { name = "Dayana Stephanie Buzle" },
+    { name = "Rafael Vieira" },
+    { name = "Luca Belmonte" }
+]
+maintainers = [
+    { name = "Luca Belmonte", email = "luca.belmonte@efsa.europa.eu" }
+]
+license = "EUPL-1.2"
+license-files = ["LICENSE"]
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=2.0",
+    "pandas>=2.2",
+    "requests>=2.32",
+    "python-dotenv>=1.0"
+]
+
+[project.optional-dependencies]
+dev = [
+    "openpyxl>=3.1.5",
+    "coverage>=7.6",
+    "pytest>=8.0",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/openefsa/pystiller"
+"Repository" = "https://github.com/openefsa/pystiller"
+"Bug Tracker" = "https://github.com/openefsa/pystiller/issues"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
