@@ -131,7 +131,7 @@ class TestRequests(unittest.TestCase):
         token_ = auth_response_.json()["token"]
 
         response_ = _perform_service_request(
-            service_url=f"{os.getenv("DISTILLER_INSTANCE_URL")}/projects",
+            service_url=f"{os.getenv('DISTILLER_INSTANCE_URL')}/projects",
             distiller_token=token_
         )
         self.assertIsInstance(response_, Response)
@@ -177,7 +177,7 @@ class TestRequests(unittest.TestCase):
         token_ = auth_response_.json()["token"]
 
         response_ = _perform_service_request(
-            service_url=f"{os.getenv("DISTILLER_INSTANCE_URL")}/datarama/query",
+            service_url=f"{os.getenv('DISTILLER_INSTANCE_URL')}/datarama/query",
             distiller_token=token_,
             body={
                 "project_id": 42483,
