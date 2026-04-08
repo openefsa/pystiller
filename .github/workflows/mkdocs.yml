@@ -1,0 +1,39 @@
+name: Build and deploy mkdocs site to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  mkdocs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+            python-version: "3.11"
+
+      - name: Install docs dependencies
+        run: |
+            pip install mkdocs
+
+      - name: Generate index.md from README.md
+        run: |
+          cp README.md docs/index.md
+          sed -i 's|docs/guide.md|guide/|g' docs/index.md
+          mkdir docs/media
+          cp media/logo.png docs/media/logo.png
+
+      - name: Build mkdocs site
+        run: mkdocs build
+
+      - name: Deploy site to gh-pages branch
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site
