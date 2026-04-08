@@ -1,0 +1,37 @@
+name: Run tests and upload coverage report to Codecov
+
+on:
+  push:
+    branches: [dev, main]
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+            python-version: "3.11"
+
+      - name: Install Python dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install codecov
+          pip install -e .
+
+      - name: Run tests with coverage
+        env:
+            SKIP_ONLINE_TESTS: "true"
+        run: |
+            coverage run -m pytest
+            coverage xml
+
+      - name: Upload score to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+            files: coverage.xml
+            token: ${{ secrets.CODECOV_TOKEN }}

@@ -1,0 +1,13 @@
+site_name: pystiller
+site_description: A wrap around the DistillerSR APIs
+site_url: https://openefsa.github.io/pystiller
+repo_url: https://github.com/openefsa/pystiller
+docs_dir: docs
+site_dir: site
+
+theme:
+  name: mkdocs
+
+nav:
+  - Home: 'index.md'
+  - 'Get started': 'guide.md'
