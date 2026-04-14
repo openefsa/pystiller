@@ -1,4 +1,4 @@
-# pystiller <img src="![media/logo.png](https://raw.githubusercontent.com/openefsa/pystiller/main/media/logo.png)" height="140" align="right">
+# pystiller <img src="https://raw.githubusercontent.com/openefsa/pystiller/main/media/logo.png" height="140" align="right">
 
 [![Lifecycle: stable](https://img.shields.io/badge/lifecycle-stable-brightgreen.svg)](https://lifecycle.r-lib.org/articles/stages.html#stable) [![codecov](https://codecov.io/gh/openefsa/pystiller/branch/main/graph/badge.svg?token=VL7426RVCI)](https://codecov.io/gh/openefsa/pystiller)
 
