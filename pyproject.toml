@@ -35,7 +35,7 @@ dev = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/openefsa/pystiller"
+"Homepage" = "https://openefsa.github.io/pystiller/"
 "Repository" = "https://github.com/openefsa/pystiller"
 "Bug Tracker" = "https://github.com/openefsa/pystiller/issues"
 
