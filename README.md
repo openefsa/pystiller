@@ -41,7 +41,7 @@ from pystiller import *
 ```
 
 Basic usage examples and full documentation are available in the package
-[guide](docs/guide.md).
+[guide](https://openefsa.github.io/pystiller/guide/).
 
 ## Authors and maintainers
 
@@ -53,6 +53,6 @@ Basic usage examples and full documentation are available in the package
 
 ## Links
 
-- **Homepage**: [GitHub](https://github.com/openefsa/pystiller).
-- **Bug Tracker**: [Issues on GitHub](https://github.com/openefsa/pystiller/issues).
+- **Source code**: [GitHub - openefsa/pystiller](https://github.com/openefsa/pystiller).
+- **Bug tracker**: [Issues on GitHub](https://github.com/openefsa/pystiller/issues).
 - **DistillerSR API Documentation**: [https://apidocs.evidencepartners.com/](https://apidocs.evidencepartners.com/).
