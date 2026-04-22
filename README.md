@@ -13,7 +13,7 @@ require convenient programmatic access to DistillerSR data.
 
 ## Installation
 
-### From PyPi
+### From PyPI
 
 ```
 pip install pystiller
