@@ -11,7 +11,7 @@ def _flatten(nested_data, separator='_'):
 
     Args:
         nested_data: The dictionary or list of dictionaries to flatten.
-        separator (str): The separator to use for nested columns names.
+        separator (str, optional): The separator to use for nested columns names.
             Defaults to '_'.
 
     Raises:

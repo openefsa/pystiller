@@ -1,3 +1,5 @@
+from pystiller import ReportFormatfrom pystiller import ReportFormat
+
 # Introduction to pystiller
 
 ## Overview
@@ -86,7 +88,7 @@ instance URL in the following format:
 
 `DISTILLER_INSTANCE_URL=<your_distiller_instance_url>`
 
-After saving the file, R will automatically read the API key on startup.
+After saving the file, R will automatically read the instance URL on startup.
 
 Alternatively, you can provide the instance URL directly in the
 `distiller_instance_url` argument of the `Client()` constructor. This is useful
@@ -209,3 +211,67 @@ print(report.head())
 Note that for very large reports, CSV files are generally a better choice.
 Exporting to Excel may cause issues when tables exceed one million rows,
 whereas CSV handles large datasets more reliably.
+
+## Getting a specific report asynchronously
+
+DistillerSR also supports an asynchronous mechanism for retrieving reports.
+This functionality is available through the **pystiller** package and can be
+accessed using the `get_report_async()`, `get_async_report_status()`, and
+`get_async_report_result()` methods.
+
+An asynchronous report retrieval job can be initiated using the
+`get_report_async()` function, as demonstrated in the following example:
+
+```python
+client = Client()
+
+project_id_ = 123
+report_id_ = 456
+
+job = client.get_report_async(
+  projectId=project_id_,
+  reportId=report_id_
+)
+
+print(job)
+```
+
+The function initiates an asynchronous job and returns a dataframe containing
+metadata about the submitted job, including a unique job token that can be used
+to monitor its status and retrieve the results:
+
+```python
+                                  token   status  duplicate
+0  56748754-c312-4658-8558-db2627bb0b10  pending      False
+```
+
+To monitor the progress of a submitted report job, use the
+`get_async_report_status()` function. An example is provided below:
+
+```python
+jobToken_ = job["token"][0]
+
+job_status = client.get_async_report_status(job_token=job_token_)
+
+print(job_status)
+```
+
+The function returns a dataframe containing metadata about the status of the
+submitted job:
+
+```python
+                                  token     status                   created_at                  finished_at  downstream_status error                                         result_url
+0  56748754-c312-4658-8558-db2627bb0b10  succeeded  2026-07-03T15:59:19.540467Z  2026-07-03T15:59:27.518767Z                200  None  /jobs/56748754-c312-4658-8558-db2627bb0b10/result
+```
+
+When the job status indicates successful completion, the resulting report can
+be obtained using the `get_async_report_result()` function, as demonstrated
+below. The `report_format` parameter must reflect the original report format;
+it can be either `ReportFormat.EXCEL` or `ReportFormat.CSV`.
+
+```python
+job_result = client.get_async_report_result(
+    job_token=job_token_,
+    report_format=ReportFormat.CSV
+)
+```

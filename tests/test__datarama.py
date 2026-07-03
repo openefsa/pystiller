@@ -7,10 +7,13 @@ from requests.exceptions import HTTPError
 import pandas as pd
 import requests
 from dotenv import load_dotenv
-from pystiller._core import _authentication
 from requests import Response
 
-from pystiller._core._datarama import _get_reports, _get_report, ReportFormat
+from pystiller._core import _authentication
+from pystiller._core._datarama import (_get_reports, _get_report,
+                                       _get_report_async,
+                                       _get_async_report_status,
+                                       _get_async_report_result, ReportFormat)
 
 load_dotenv()
 
@@ -163,7 +166,7 @@ class TestDatarama(unittest.TestCase):
             'a': [1], 'b': [2], 'c': [3], 'd': [4]
         })
         buffer_ = io.BytesIO()
-        dataframe_.to_excel(buffer_, index=True)  # type: ignore[arg-type]
+        dataframe_.to_excel(buffer_, index=True)
         buffer_.seek(0)
         response_._content = buffer_.getvalue()
         mock_serv_req.return_value = response_
@@ -176,8 +179,8 @@ class TestDatarama(unittest.TestCase):
 
     # This test requires the DISTILLER_API_KEY, DISTILLER_INSTANCE_URL,
     # DISTILLER_PROJECT_ID_TEST, and DISTILLER_REPORT_ID_TEST environment
-    # variables to be set. This test performs real requests to the DistillerSR
-    # API.
+    # variables to be set.
+    # This test performs real requests to the DistillerSR API.
     @unittest.skipIf(os.getenv("SKIP_ONLINE_TESTS") == "true",
                      "Skip online tests")
     def test__get_report_output_xlsx_online(self):
@@ -215,7 +218,7 @@ class TestDatarama(unittest.TestCase):
     @patch("pystiller._core._datarama._requests._perform_service_request")
     @patch("pystiller._core._datarama.time.sleep")
     def test__get_report_delay(self, mock_sleep, mock_serv_req):
-        """Test the output type of the request."""
+        """Test the delay mechanism."""
         sleep_called_ = False
         def _mark_sleep(*args, **kwargs):
             nonlocal sleep_called_
@@ -231,10 +234,300 @@ class TestDatarama(unittest.TestCase):
 
     @patch("pystiller._core._datarama._requests._perform_service_request")
     def test__get_report_verbose(self, mock_serv_req):
-        """Test the output type of the request."""
+        """Test the output verbosity."""
         mock_serv_req.side_effect = HTTPError
         self.assertRaises(RuntimeError, _get_report, project_id=123,
                           report_id=456, report_format=ReportFormat.CSV,
                           distiller_instance_url="https://example.org",
                           distiller_token="DISTILLER_TOKEN", attempts=2,
                           retry_each=1)
+
+    #######################
+    # _get_report_async() #
+    #######################
+
+    def test__get_report_async_types(self):
+        """Test the behaviour for invalid data."""
+        self.assertRaises(TypeError, _get_report_async, project_id="",
+                          report_id=456, distiller_instance_url="",
+                          distiller_async_instance_url="", distiller_token="",
+                          timeout=1800)
+        self.assertRaises(TypeError, _get_report_async, project_id=123,
+                          report_id="", distiller_instance_url="",
+                          distiller_async_instance_url="", distiller_token="",
+                          timeout=1800)
+        self.assertRaises(TypeError, _get_report_async, project_id=123,
+                          report_id=456, distiller_instance_url=1,
+                          distiller_async_instance_url="", distiller_token="",
+                          timeout=1800)
+        self.assertRaises(TypeError, _get_report_async, project_id=123,
+                          report_id=456, distiller_instance_url="",
+                          distiller_async_instance_url=1, distiller_token="",
+                          timeout=1800)
+        self.assertRaises(TypeError, _get_report_async, project_id=123,
+                          report_id=456, distiller_instance_url="",
+                          distiller_async_instance_url="", distiller_token=1,
+                          timeout=1800)
+        self.assertRaises(TypeError, _get_report_async, project_id=123,
+                          report_id=456, distiller_instance_url="",
+                          distiller_async_instance_url="", distiller_token="",
+                          timeout="")
+
+    @patch("pystiller._core._datarama._requests._perform_service_request")
+    def test__get_report_async_bad_url(self, mock_serv_req):
+        """Test the behaviour for bad async instance URLs."""
+        mock_serv_req.side_effect = requests.exceptions.ConnectionError
+        self.assertRaises(
+            Exception, _get_report_async, project_id=123, report_id=456,
+            distiller_instance_url="https://example.org",
+            distiller_async_instance_url="https://invalid-domain",
+            distiller_token="DISTILLER_TOKEN")
+
+    # This test performs real requests.
+    @unittest.skipIf(os.getenv("SKIP_ONLINE_TESTS") == "true",
+                     "Skip online tests")
+    def test__get_report_async_bad_url_online(self):
+        """Test the behaviour for bad instance URLs."""
+        self.assertRaises(
+            Exception, _get_report_async, project_id=123, report_id=456,
+            distiller_instance_url="https://example.org",
+            distiller_async_instance_url="https://invalid-domain",
+            distiller_token="DISTILLER_TOKEN")
+
+    @patch("pystiller._core._datarama._requests._perform_service_request")
+    def test__get_report_async_output(self, mock_serv_req):
+        """Test the output type of the request."""
+        response_ = Response()
+        response_.status_code = 202
+        response_.url = "https://example.org/jobs"
+        response_.method = "POST"
+        response_.headers["Content-Type"] = "application/json"
+        response_._content = json.dumps({
+            "a": [1], "b": [2], "c": [3], "d": [4]
+        }).encode("utf-8")
+        mock_serv_req.return_value = response_
+        response_ = _get_report_async(
+            project_id=123,
+            report_id=456,
+            distiller_instance_url="https://example.org",
+            distiller_async_instance_url="https://example.org",
+            distiller_token="DISTILLER_TOKEN"
+        )
+        self.assertIsInstance(response_, pd.DataFrame)
+
+    # This test requires the DISTILLER_INSTANCE_URL,
+    # DISTILLER_ASYNC_INSTANCE_URL, DISTILLER_API_KEY,
+    # DISTILLER_PROJECT_ID_TEST, and DISTILLER_REPORT_ID_TEST environment
+    # variables to be set.
+    # This test performs real requests to the DistillerSR API.
+    @unittest.skipIf(os.getenv("SKIP_ONLINE_TESTS") == "true",
+                     "Skip online tests")
+    def test__get_report_async_output_online(self):
+        """Test the output type of the request."""
+        token_ = _authentication._get_authentication_token(
+            distiller_instance_url=os.getenv("DISTILLER_INSTANCE_URL"),
+            distiller_key=os.getenv("DISTILLER_API_KEY")
+        )
+        response_ = _get_report_async(
+            project_id=int(os.getenv("DISTILLER_PROJECT_ID_TEST")),
+            report_id=int(os.getenv("DISTILLER_REPORT_ID_TEST")),
+            distiller_instance_url=os.getenv("DISTILLER_INSTANCE_URL"),
+            distiller_async_instance_url=
+                os.getenv("DISTILLER_ASYNC_INSTANCE_URL"),
+            distiller_token=token_
+        )
+        self.assertIsInstance(response_, pd.DataFrame)
+
+    ##############################
+    # _get_async_report_status() #
+    ##############################
+
+    def test__get_async_report_status(self):
+        """Test the behaviour for invalid data."""
+        self.assertRaises(TypeError, _get_async_report_status, job_token=1,
+                          distiller_async_instance_url="", timeout=1800)
+        self.assertRaises(TypeError, _get_async_report_status, job_token="",
+                          distiller_async_instance_url=1, timeout=1800)
+        self.assertRaises(TypeError, _get_async_report_status, job_token="",
+                          distiller_async_instance_url="", timeout="")
+
+    @patch("pystiller._core._datarama._requests._perform_service_request")
+    def test__get_async_report_status_bad_token(self, mock_serv_req):
+        """Test the behaviour for bad async instance URLs."""
+        mock_serv_req.side_effect = requests.exceptions.HTTPError
+        self.assertRaises(
+            Exception, _get_async_report_status, job_token="BAD_JOB_TOKEN",
+            distiller_async_instance_url="https://example.org")
+
+    # This test requires the DISTILLER_ASYNC_INSTANCE_URL environment variable
+    # to be set.
+    # This test performs real requests to the DistillerSR API.
+    @unittest.skipIf(os.getenv("SKIP_ONLINE_TESTS") == "true",
+                     "Skip online tests")
+    def test__get_async_report_status_bad_token_online(self):
+        """Test the behaviour for bad instance URLs."""
+        self.assertRaises(
+            Exception, _get_async_report_status, job_token="BAD_JOB_TOKEN")
+
+    @patch("pystiller._core._datarama._requests._perform_service_request")
+    def test__get_async_report_status_bad_url(self, mock_serv_req):
+        """Test the behaviour for bad async instance URLs."""
+        mock_serv_req.side_effect = requests.exceptions.ConnectionError
+        self.assertRaises(
+            Exception, _get_async_report_status, job_token="",
+            distiller_async_instance_url="https://invalid-domain")
+
+    # This test requires the DISTILLER_ASYNC_INSTANCE_URL environment variable
+    # to be set.
+    # This test performs real requests to the DistillerSR API.
+    @unittest.skipIf(os.getenv("SKIP_ONLINE_TESTS") == "true",
+                     "Skip online tests")
+    def test__get_async_report_status_bad_url_online(self):
+        """Test the behaviour for bad instance URLs."""
+        self.assertRaises(
+            Exception, _get_async_report_status, job_token="",
+            distiller_async_instance_url="https://invalid-domain")
+
+    @patch("pystiller._core._datarama._requests._perform_service_request")
+    def test__get_async_report_status_output(self, mock_serv_req):
+        """Test the output type of the request."""
+        response_ = Response()
+        response_.status_code = 200
+        response_.url = "https://example.org/jobs/JOB_TOKEN"
+        response_.method = "GET"
+        response_.headers["Content-Type"] = "application/json"
+        response_._content = json.dumps({
+            "a": [1], "b": [2], "c": [3], "d": [4]
+        }).encode("utf-8")
+        mock_serv_req.return_value = response_
+        response_ = _get_async_report_status(
+            job_token="JOB_TOKEN",
+            distiller_async_instance_url="https://example.org"
+        )
+        self.assertIsInstance(response_, pd.DataFrame)
+
+    # This test requires the DISTILLER_ASYNC_INSTANCE_URL and
+    # DISTILLER_JOB_TOKEN_XLSX_TEST environment variables to be set.
+    # This test performs real requests to the DistillerSR API.
+    @unittest.skipIf(os.getenv("SKIP_ONLINE_TESTS") == "true",
+                     "Skip online tests")
+    def test__get_async_report_status_output_online(self):
+        """Test the output type of the request."""
+        response_ = _get_async_report_status(
+            job_token=os.getenv("DISTILLER_JOB_TOKEN_XLSX_TEST"),
+            distiller_async_instance_url=
+                os.getenv("DISTILLER_ASYNC_INSTANCE_URL"),
+        )
+        self.assertIsInstance(response_, pd.DataFrame)
+
+    ##############################
+    # _get_async_report_result() #
+    ##############################
+
+    def test__get_async_report_result(self):
+        """Test the behaviour for invalid data."""
+        self.assertRaises(TypeError, _get_async_report_result, job_token=1,
+                          distiller_async_instance_url="",
+                          report_format=ReportFormat.CSV, timeout=1800)
+        self.assertRaises(TypeError, _get_async_report_result, job_token="",
+                          distiller_async_instance_url=1,
+                          report_format=ReportFormat.CSV, timeout=1800)
+        self.assertRaises(TypeError, _get_async_report_result, job_token="",
+                          distiller_async_instance_url="", report_format=1,
+                          timeout="")
+        self.assertRaises(TypeError, _get_async_report_result, job_token="",
+                          distiller_async_instance_url="",
+                          report_format=ReportFormat.CSV, timeout="")
+
+    @patch("pystiller._core._datarama._requests._perform_service_request")
+    def test__get_async_report_result_bad_token(self, mock_serv_req):
+        """Test the behaviour for bad async instance URLs."""
+        mock_serv_req.side_effect = requests.exceptions.HTTPError
+        self.assertRaises(
+            Exception, _get_async_report_result, job_token="BAD_JOB_TOKEN",
+            distiller_async_instance_url="https://example.org")
+
+    # This test requires the DISTILLER_ASYNC_INSTANCE_URL environment variable
+    # to be set.
+    # This test performs real requests to the DistillerSR API.
+    @unittest.skipIf(os.getenv("SKIP_ONLINE_TESTS") == "true",
+                     "Skip online tests")
+    def test__get_async_report_result_bad_token_online(self):
+        """Test the behaviour for bad instance URLs."""
+        self.assertRaises(
+            Exception, _get_async_report_result, job_token="BAD_JOB_TOKEN")
+
+    @patch("pystiller._core._datarama._requests._perform_service_request")
+    def test__get_async_report_result_bad_url(self, mock_serv_req):
+        """Test the behaviour for bad async instance URLs."""
+        mock_serv_req.side_effect = requests.exceptions.ConnectionError
+        self.assertRaises(
+            Exception, _get_async_report_result, job_token="",
+            distiller_async_instance_url="https://invalid-domain")
+
+    # This test requires the DISTILLER_ASYNC_INSTANCE_URL environment variable
+    # to be set.
+    # This test performs real requests to the DistillerSR API.
+    @unittest.skipIf(os.getenv("SKIP_ONLINE_TESTS") == "true",
+                     "Skip online tests")
+    def test__get_async_report_result_bad_url_online(self):
+        """Test the behaviour for bad instance URLs."""
+        self.assertRaises(
+            Exception, _get_async_report_result, job_token="",
+            distiller_async_instance_url="https://invalid-domain")
+
+    @patch("pystiller._core._datarama._requests._perform_service_request")
+    def test__get_async_report_result_output_xlsx(self, mock_serv_req):
+        """Test the output type of the request."""
+        response_ = Response()
+        response_.status_code = 200
+        response_.url = "https://example.org/jobs/JOB_TOKEN/result"
+        response_.method = "GET"
+        response_.headers["Content-Type"] = (
+                "application/vnd.openxmlformats-officedocuments." +
+                "spreadsheetml.sheet"
+        )
+        dataframe_ = pd.DataFrame({
+            'a': [1], 'b': [2], 'c': [3], 'd': [4]
+        })
+        buffer_ = io.BytesIO()
+        dataframe_.to_excel(buffer_, index=True)
+        buffer_.seek(0)
+        response_._content = buffer_.getvalue()
+        mock_serv_req.return_value = response_
+        response_ = _get_async_report_result(
+            job_token="JOB_TOKEN", report_format=ReportFormat.EXCEL,
+            distiller_async_instance_url="https://example.org"
+        )
+        self.assertIsInstance(response_, pd.DataFrame)
+
+    # This test requires the DISTILLER_ASYNC_INSTANCE_URL and
+    # DISTILLER_JOB_TOKEN_XLSX_TEST environment variables to be set.
+    # This test performs real requests to the DistillerSR API.
+    @unittest.skipIf(os.getenv("SKIP_ONLINE_TESTS") == "true",
+                     "Skip online tests")
+    def test__get_async_report_result_output_xlsx_online(self):
+        """Test the output type of the request."""
+        response_ = _get_async_report_result(
+            job_token=os.getenv("DISTILLER_JOB_TOKEN_XLSX_TEST"),
+            distiller_async_instance_url=
+                os.getenv("DISTILLER_ASYNC_INSTANCE_URL"),
+            report_format=ReportFormat.EXCEL,
+        )
+        self.assertIsInstance(response_, pd.DataFrame)
+
+    @patch("pystiller._core._datarama._requests._perform_service_request")
+    def test__get_async_report_result_output_csv(self, mock_serv_req):
+        """Test the output type of the request."""
+        response_ = Response()
+        response_.status_code = 200
+        response_.url = "https://example.org/jobs/JOB_TOKEN/result"
+        response_.method = "GET"
+        response_.headers["Content-Type"] = "text/csv"
+        response_._content = "a,b\n1,2".encode("utf-8")
+        mock_serv_req.return_value = response_
+        response_ = _get_async_report_result(
+            job_token="JOB_TOKEN", report_format=ReportFormat.CSV,
+            distiller_async_instance_url="https://example.org"
+        )
+        self.assertIsInstance(response_, pd.DataFrame)
