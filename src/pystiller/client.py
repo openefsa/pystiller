@@ -11,6 +11,8 @@ class Client:
     Attributes:
         _distiller_key (str): The API key used for authentication.
         _distiller_instance_url (str): The Distiller instance URL.
+        _distiller_async_instance_url (str): The Distiller asynchronous
+            instance URL.
         _distiller_token (str): The Distiller authorization token.
         _automatic_token_refresh (bool): If True, automatic token refresh is
             performed when the token is going to expire.
@@ -24,18 +26,27 @@ class Client:
             to a project.
         get_report(project_id, report_id): Retrieves a specific Distiller
             report.
+        get_report_async(): Submit an asynchronous job to retrieve a Distiller
+            report.
+        get_async_report_status(): Get the status of an asynchronous job to
+            retrieve a Distiller report.
+        get_async_report_result(): Get the result of an asynchronous job to
+            retrieve a Distiller report.
         _get_or_refresh_token(): Checks if the Distiller token is still valid.
             If not, it will request a new one. If the token is not set (e.g.,
             at client initialisation), it will request it.
     """
 
     def __init__(self, distiller_key=None, distiller_instance_url=None,
+                 distiller_async_instance_url=None,
                  automatic_token_refresh=False):
         """Initialize the client.
 
         Args:
             distiller_key (str, optional): The API key used for authentication.
             distiller_instance_url (str, optional): The Distiller instance URL.
+            distiller_async_instance_url (str, optional): The Distiller
+                asynchronous instance URL.
             automatic_token_refresh (bool, optional): If True, automatically
                 refresh the Distiller token if it is going to expire. Defaults
                 to False.
@@ -43,15 +54,16 @@ class Client:
         Examples:
             >>> from pystiller import Client
 
-            >>> # Create a client using the API key and the instance URL
+            >>> # Create a client using the API key and the instance URLs
             >>> # defined in the .env file.
             >>> client_with_default = Client()
 
             >>> # Create a client using manually specified API key and instance
-            >>> # URL.
+            >>> # URLs.
             >>> client_with_customs = Client(
             >>>     distiller_key="<your_distiller_api_key>",
-            >>>     distiller_instance_url="<your_distiller_instance_url>"
+            >>>     distiller_instance_url="<your_distiller_instance_url>",
+            >>>     distiller_async_instance_url="<your_async_instance_url>"
             >>> )
         """
 
@@ -76,6 +88,21 @@ class Client:
 
         if self._distiller_instance_url.endswith('/'):
             self._distiller_instance_url = self._distiller_instance_url[:-1]
+
+        if distiller_async_instance_url is not None:
+            self._distiller_async_instance_url = distiller_async_instance_url
+        else:
+            self._distiller_async_instance_url = _env._read_environment_variable(
+                name="DISTILLER_ASYNC_INSTANCE_URL")
+
+        _checks._require_type(value=self._distiller_async_instance_url,
+                              expected_type=str)
+        _checks._require_string_not_empty(
+            value=self._distiller_async_instance_url)
+
+        if self._distiller_async_instance_url.endswith('/'):
+            self._distiller_async_instance_url \
+                = self._distiller_async_instance_url[:-1]
 
         self._automatic_token_refresh = automatic_token_refresh
         _checks._require_type(value=self._automatic_token_refresh,
@@ -240,3 +267,106 @@ class Client:
             attempts=attempts,
             retry_each=retry_each,
             verbose=verbose)
+
+
+    def get_report_async(self, project_id, report_id, timeout=1800):
+        """Submit an asynchronous job to retrieve a Distiller report.
+
+        This function submits an asynchronous job to DistillerSR to retrieve a
+        saved report associated with a given project ID. It requires user
+        authentication and a valid asynchronous API endpoint URL. The result is
+        a dataframe containing metadata about the submitted job.
+
+        Args:
+            project_id (int): The ID of the project as provided by DistillerSR.
+            report_id (int): The ID of the report as provided by DistillerSR.
+            timeout (int, optional): The maximum number of seconds to wait for
+                the service response. Defaults to 1800 seconds (30 minutes).
+
+        Returns:
+            pd.DataFrame: A data frame containing metadata about the submitted
+            job.
+
+        Examples:
+            >>> from pystiller import Client
+
+            >>> client = Client()
+
+            >>> # Get a specific report asynchronously.
+            >>> report = client.get_report_async(project_id=123, report_id=456)
+        """
+
+        if self._automatic_token_refresh:
+            self._get_or_refresh_token()
+
+        return _datarama._get_report_async(
+            project_id=project_id,
+            report_id=report_id,
+            distiller_instance_url=self._distiller_instance_url,
+            distiller_async_instance_url=self._distiller_async_instance_url,
+            distiller_token=self._distiller_token,
+            timeout=timeout)
+
+
+    def get_async_report_status(self, job_token, timeout=1800):
+        """Get the status of an asynchronous job to retrieve a Distiller report.
+
+        This function gets the status of a successfully submitted Distiller
+        asynchronous job to retrieve a saved report. It requires a valid
+        asynchronous job token. The result is a dataframe containing metadata
+        about the job status.
+
+        Args:
+            job_token (str): The token associated to the submitted asynchronous
+                job.
+            timeout (int, optional): The maximum number of seconds to wait for
+                the service response. Defaults to 1800 seconds (30 minutes).
+
+        Returns:
+            pd.DataFrame: A data frame containing metadata about the job
+                status.
+
+        Examples:
+            >>> from pystiller import Client
+
+            >>> client = Client()
+
+            >>> # Get the status of a report job.
+            >>> report_status = client.get_async_report_status(
+            >>>     job_token="<your_job_token>"
+            >>> )
+        """
+
+        return _datarama._get_async_report_status(
+            job_token=job_token,
+            distiller_async_instance_url=self._distiller_async_instance_url,
+            timeout=timeout)
+
+
+    def get_async_report_result(self, job_token,
+                                report_format=ReportFormat.CSV, timeout=1800):
+        """Get the result of a job to retrieve a Distiller report.
+
+        This function gets the result of a successful Distiller asynchronous
+        job to retrieve a saved report associated with a given project ID. It
+        requires a valid asynchronous job token. The result is a dataframe
+        containing metadata about the saved report.
+
+        Args:
+            job_token (str): The token associated to the submitted asynchronous
+                job.
+            report_format (ReportFormat, optional): The desired format of the
+                document. Defaults to CSV (Comma Separated Values).
+            timeout (int, optional): The maximum number of seconds to wait for
+                the service response. Defaults to 1800 seconds (30 minutes).
+
+        Returns:
+            pd.DataFrame: A data frame containing the Distiller report as
+                designed within DistillerSR.
+        """
+
+        return _datarama._get_async_report_result(
+            job_token=job_token,
+            report_format=report_format,
+            distiller_async_instance_url=self._distiller_async_instance_url,
+            timeout=timeout)

@@ -6,9 +6,9 @@ from pystiller._utils._env import _read_environment_variable
 
 class TestEnv(unittest.TestCase):
 
-    ####################################
+    ################################
     # _read_environment_variable() #
-    ####################################
+    ################################
 
     def test__read_environment_variable_invalid(self):
         """Test the behaviour for invalid data."""
