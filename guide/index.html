@@ -117,6 +117,10 @@
               <ul class="nav flex-column">
               </ul>
             </li>
+            <li class="nav-item" data-bs-level="2"><a href="#getting-a-specific-report-asynchronously" class="nav-link">Getting a specific report asynchronously</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
               </ul>
             </li>
         </ul>
@@ -124,6 +128,7 @@
 </div></div>
                     <div class="col-md-9" role="main">
 
+<p>from pystiller import ReportFormatfrom pystiller import ReportFormat</p>
 <h1 id="introduction-to-pystiller">Introduction to pystiller</h1>
 <h2 id="overview">Overview</h2>
 <p>The <strong>pystiller</strong> package provides a pool of functions to query <strong>DistillerSR</strong>
@@ -183,7 +188,7 @@ ways:</p>
 <p>If you prefer to store the URL in the <code>.env</code> file, add your DistillerSR
 instance URL in the following format:</p>
 <p><code>DISTILLER_INSTANCE_URL=&lt;your_distiller_instance_url&gt;</code></p>
-<p>After saving the file, R will automatically read the API key on startup.</p>
+<p>After saving the file, R will automatically read the instance URL on startup.</p>
 <p>Alternatively, you can provide the instance URL directly in the
 <code>distiller_instance_url</code> argument of the <code>Client()</code> constructor. This is useful
 if you refer not to store the instance URL globally. For example:</p>
@@ -268,7 +273,54 @@ print(report.head())
 </code></pre>
 <p>Note that for very large reports, CSV files are generally a better choice.
 Exporting to Excel may cause issues when tables exceed one million rows,
-whereas CSV handles large datasets more reliably.</p></div>
+whereas CSV handles large datasets more reliably.</p>
+<h2 id="getting-a-specific-report-asynchronously">Getting a specific report asynchronously</h2>
+<p>DistillerSR also supports an asynchronous mechanism for retrieving reports.
+This functionality is available through the <strong>pystiller</strong> package and can be
+accessed using the <code>get_report_async()</code>, <code>get_async_report_status()</code>, and
+<code>get_async_report_result()</code> methods.</p>
+<p>An asynchronous report retrieval job can be initiated using the
+<code>get_report_async()</code> function, as demonstrated in the following example:</p>
+<pre><code class="language-python">client = Client()
+
+project_id_ = 123
+report_id_ = 456
+
+job = client.get_report_async(
+  projectId=project_id_,
+  reportId=report_id_
+)
+
+print(job)
+</code></pre>
+<p>The function initiates an asynchronous job and returns a dataframe containing
+metadata about the submitted job, including a unique job token that can be used
+to monitor its status and retrieve the results:</p>
+<pre><code class="language-python">                                  token   status  duplicate
+0  56748754-c312-4658-8558-db2627bb0b10  pending      False
+</code></pre>
+<p>To monitor the progress of a submitted report job, use the
+<code>get_async_report_status()</code> function. An example is provided below:</p>
+<pre><code class="language-python">jobToken_ = job[&quot;token&quot;][0]
+
+job_status = client.get_async_report_status(job_token=job_token_)
+
+print(job_status)
+</code></pre>
+<p>The function returns a dataframe containing metadata about the status of the
+submitted job:</p>
+<pre><code class="language-python">                                  token     status                   created_at                  finished_at  downstream_status error                                         result_url
+0  56748754-c312-4658-8558-db2627bb0b10  succeeded  2026-07-03T15:59:19.540467Z  2026-07-03T15:59:27.518767Z                200  None  /jobs/56748754-c312-4658-8558-db2627bb0b10/result
+</code></pre>
+<p>When the job status indicates successful completion, the resulting report can
+be obtained using the <code>get_async_report_result()</code> function, as demonstrated
+below. The <code>report_format</code> parameter must reflect the original report format;
+it can be either <code>ReportFormat.EXCEL</code> or <code>ReportFormat.CSV</code>.</p>
+<pre><code class="language-python">job_result = client.get_async_report_result(
+    job_token=job_token_,
+    report_format=ReportFormat.CSV
+)
+</code></pre></div>
             </div>
         </div>
 
